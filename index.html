@@ -115,7 +115,6 @@
         ui.copyButton.classList.remove("hidden");
       });
       ui.pickRandom.addEventListener("click", () => {
-        console.log("asdf");
         ui.mnemonicInput.value = "";
         if (ui.pickRandom.checked) {
           ui.wordsToChooseFrom.classList.remove("hidden");
@@ -125,7 +124,6 @@
         } else {
           ui.wordsToChooseFrom.classList.add("hidden");
           ui.submitButton.disabled = false;
-          console.log("hello");
           ui.submitButton.classList.remove("bg-stone-500");
         }
       });
@@ -133,9 +131,10 @@
     <script>
       let selected = [];
       const clicked = {};
-      englishWordList.forEach((word, index) => {
+      englishWordList.forEach(async (word, index) => {
         const wordDiv = document.createElement("div");
-        clicked[word] = false;
+        clicked[word] = "unselected";
+        wordDiv.id = word;
         wordDiv.innerText = word;
         wordDiv.classList.add(["max-w-[80px]"]);
         wordDiv.classList.add(["min-w-[80px]"]);
@@ -149,16 +148,36 @@
         wordDiv.classList.add(["m-1"]);
         document.getElementById("words").appendChild(wordDiv);
 
-        wordDiv.onclick = (e) => {
-          if (selected.length >= 12 && clicked[word] == false) {
+        wordDiv.onclick = async (e) => {
+          // only allow selecting 12
+          if (
+            (selected.length >= 12 && clicked[word] == "unselected") ||
+            clicked[word] === "checkSum"
+          ) {
             alert("12 words already selected");
             return;
           }
-          clicked[word] = !clicked[word];
-          if (clicked[word]) {
+          if (selected.length === 11 && clicked[word] !== "selected") {
+            const validLastWords = await getLastValidWords(
+              selected,
+              englishWordList
+            );
+            if (!validLastWords.includes(wordDiv.innerText)) {
+              alert("invalid final word");
+              return;
+            }
+          }
+          // clicking state update
+          if (clicked[word] == "unselected" || clicked[word] === "checkSum") {
+            clicked[word] = "selected";
+          } else {
+            clicked[word] = "unselected";
+          }
+          if (clicked[word] == "selected") {
             wordDiv.classList.add(["text-white"]);
 
             wordDiv.classList.remove(["text-black"]);
+            wordDiv.classList.remove(["bg-green-500"]);
             wordDiv.classList.add(["bg-blue-500"]);
             selected.push(word);
           } else {
@@ -167,8 +186,22 @@
             wordDiv.classList.remove(["text-white"]);
             selected = selected.filter((w) => w !== word);
           }
+          if (selected.length === 11) {
+            const validLastWords = await getLastValidWords(
+              selected,
+              englishWordList
+            );
+            console.log(validLastWords);
+            validLastWords.forEach((w) => {
+              const element = document.getElementById(w);
+              element.classList.add("bg-green-500");
+            });
+          }
           if (selected.length === 12) {
-            const isValid = testValidation(selected, englishWordList);
+            const isValid = await validateMnemonic(
+              selected.join(" "),
+              englishWordList
+            );
             if (isValid) {
               ui.validateMnemonic.innerText = " mnemonic is valid";
               ui.validateMnemonic.classList.add("text-green-500");
@@ -264,7 +297,6 @@
       // so that any two texts that are equivalent will be reduced
       // to the same sequence of code points, called the normal form of the original text.
       function nfkd(str) {
-        console.log(str);
         if (typeof str !== "string")
           throw new TypeError(`Invalid mnemonic type: ${typeof str}`);
         return str.normalize("NFKD");
@@ -368,7 +400,10 @@
       async function entropyToMnemonic(entropy, wordlist) {
         assertEntropy(entropy);
         const entropyBits = bytesToBinary(entropy);
+        console.log("entropy =>", entropy); // uint8 array
+        console.log("entropyBits =>", entropyBits); // binary string
         const checksumBits = await deriveChecksumBits(entropy);
+        console.log("checksumBits =>", checksumBits); // binary string
         const bits = entropyBits + checksumBits;
         const chunks = bits.match(/(.{1,11})/g);
         const words = chunks.map((binary) => {
@@ -411,50 +446,69 @@
           64
         );
       }
-
-      function testValidation(mnemonic, wordlist) {
-        const INVALID_ENTROPY = "invalid entropy";
-        wordlist = wordlist;
-        if (!wordlist) {
-          throw new Error("no word list");
-        }
-
-        const words = mnemonic.join(" ").normalize("NFKD").split(" ");
-        if (words.length % 3 !== 0) {
-          throw new Error("invalid mnemonic");
-        }
-        // convert word indices to 11 bit binary strings
-        const bits = words
-          .map((word) => {
-            const index = wordlist.indexOf(word);
-            if (index === -1) {
-              throw new Error("invalid mnemonic");
+      async function getLastValidWords(mnemonicWithoutFinalWord, wordlist) {
+        let possibleLastWords = await Promise.all(
+          englishWordList.map(async (lastWord) => {
+            if (mnemonicWithoutFinalWord.includes(lastWord)) return; // if they already selected this word it can't be used
+            const mnemonicAsString = mnemonicWithoutFinalWord.join(" ");
+            try {
+              const results = await mnemonicToEntropy(
+                `${mnemonicAsString} ${lastWord}`,
+                wordlist
+              ); // convert it to entropy, if non error response means its correct
+              return lastWord;
+              console.log(`last word ${lastWord} =>`, results);
+            } catch {
+              return;
             }
-            return lpad(index.toString(2), "0", 11);
           })
-          .join("");
-        // split the binary string into ENT/CS
-        const dividerIndex = Math.floor(bits.length / 33) * 32;
-        const entropyBits = bits.slice(0, dividerIndex);
-        const checksumBits = bits.slice(dividerIndex);
-        // calculate the checksum and compare
-        const entropyBytes = entropyBits.match(/(.{1,8})/g).map(binaryToByte);
-        if (entropyBytes.length < 16) {
-          throw new Error(INVALID_ENTROPY);
-        }
-        if (entropyBytes.length > 32) {
-          throw new Error(INVALID_ENTROPY);
-        }
-        if (entropyBytes.length % 4 !== 0) {
-          throw new Error(INVALID_ENTROPY);
-        }
-        const entropy = bytesToBinary(entropyBytes);
-        const newChecksum = deriveChecksumBits(entropy);
-        if (newChecksum !== checksumBits) {
-          throw new Error("invalid checksum");
-        }
-        return entropy.toString("hex");
+        );
+        return (possibleLastWords = possibleLastWords.filter((r) => r));
       }
+      // async function testValidation(mnemonic, wordlist) {
+      //   const INVALID_ENTROPY = "invalid entropy";
+      //   wordlist = wordlist;
+      //   if (!wordlist) {
+      //     throw new Error("no word list");
+      //   }
+
+      //   const words = mnemonic.join(" ").normalize("NFKD").split(" ");
+      //   if (words.length % 3 !== 0) {
+      //     throw new Error("invalid mnemonic");
+      //   }
+      //   // convert word indices to 11 bit binary strings
+      //   const bits = words
+      //     .map((word) => {
+      //       const index = wordlist.indexOf(word);
+      //       if (index === -1) {
+      //         throw new Error("invalid mnemonic");
+      //       }
+      //       return lpad(index.toString(2), "0", 11);
+      //     })
+      //     .join("");
+      //   // split the binary string into ENT/CS
+      //   const dividerIndex = Math.floor(bits.length / 33) * 32;
+      //   const entropyBits = bits.slice(0, dividerIndex);
+      //   const checksumBits = bits.slice(dividerIndex);
+      //   // calculate the checksum and compare
+      //   const entropyBytes = entropyBits.match(/(.{1,8})/g).map(binaryToByte);
+      //   if (entropyBytes.length < 16) {
+      //     throw new Error(INVALID_ENTROPY);
+      //   }
+      //   if (entropyBytes.length > 32) {
+      //     throw new Error(INVALID_ENTROPY);
+      //   }
+      //   if (entropyBytes.length % 4 !== 0) {
+      //     throw new Error(INVALID_ENTROPY);
+      //   }
+      //   const entropy = bytesToBinary(entropyBytes);
+      //   const newChecksum = await deriveChecksumBits(entropy);
+      //   console.log(newChecksum);
+      //   if (newChecksum !== checksumBits) {
+      //     throw new Error("invalid checksum");
+      //   }
+      //   return entropy.toString("hex");
+      // }
       function lpad(str, padString, length) {
         while (str.length < length) {
           str = padString + str;
