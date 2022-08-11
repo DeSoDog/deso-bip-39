@@ -22,8 +22,8 @@
             Deso key Generator
             <img
               src="./deso-logo.png"
-              height="150"
-              width="150"
+              height="100"
+              width="100"
               class="mx-auto"
             />
           </div>
@@ -40,7 +40,8 @@
             remember mnemonics.
           </div>
         </div>
-        <div class="flex w-[800px] max-w-[800px] mx-auto mb-2">
+        <div class="flex w-[800px] max-w-[800px] mx-auto mb-2"></div>
+        <div class="flex justify-around">
           <div>
             <input
               class="h-[11px]"
@@ -48,14 +49,6 @@
               type="checkbox"
             /><label class="ml-1 text-[16px]">Pick mnemonic </label>
           </div>
-        </div>
-        <div class="flex justify-center">
-          <button
-            id="submit"
-            class="bg-blue-700 py-2 px-6 border-stone-500 border-1 text-white rounded-lg"
-          >
-            generate mnemonic
-          </button>
         </div>
         <div class="flex justify-center mt-2">
           <textarea
@@ -69,18 +62,26 @@
         <div class="flex justify-center mt-2">
           <div id="generated-mnemonic"></div>
         </div>
-        <div class="flex justify-center">
+        <div class="flex justify-center mb-2">
           <a
             id="copy-button"
             class="cursor-pointer hover:underline text-blue-700 hidden"
             >copy</a
           >
         </div>
+        <div class="flex justify-center">
+        <button
+          id="submit"
+          class="bg-blue-700 py-2 px-6 border-stone-500 border-1 text-white rounded-lg"
+        >
+          generate mnemonic
+        </button>
+        <div>
         <div
           class="flex flex-col justify-center hidden"
           id="words-to-choose-from"
         >
-          <div class="flex justify-around my-2">
+          <div class="flex justify-around mb-2">
             <div class="flex justify-content">
               <div
                 class="bg-blue-500 h-[10px] w-[10px] mt-auto mb-[5px] mr-[5px]"
@@ -100,9 +101,10 @@
               <div class="mt-auto text-bottom">viable last words</div>
             </div>
           </div>
+
           <div
             id="words"
-            class="flex justify-center border border-stone-500 p-2 flex-wrap max-w-[800px] mx-auto max-h-[500px] overflow-auto bg-white"
+            class="flex justify-center border border-stone-500 p-2 flex-wrap max-w-[800px] mx-auto max-h-[400px] overflow-auto bg-white"
           ></div>
         </div>
       </div>
@@ -2189,12 +2191,12 @@
         resetState();
         if (ui.pickRandom.checked) {
           ui.wordsToChooseFrom.classList.remove("hidden");
-          ui.submitButton.disabled = true;
+          ui.submitButton.classList.add("hidden");
 
           ui.submitButton.classList.add("bg-stone-500");
         } else {
           ui.wordsToChooseFrom.classList.add("hidden");
-          ui.submitButton.disabled = false;
+          ui.submitButton.classList.remove("hidden");
           ui.submitButton.classList.remove("bg-stone-500");
         }
       });
