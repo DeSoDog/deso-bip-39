@@ -3,52 +3,53 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Web BIP39</title>
+    <title>DeSo BIP39</title>
     <style>
       body {
         overflow: hidden;
       }
     </style>
+    <link rel="icon" href="./deso-logo.png" />
     <script src="./tailwind.js"></script>
     <script src="./word-list.js"></script>
   </head>
 
-  <body>
+  <body class="bg-stone-200">
     <div id="app" class="flex justify-center">
       <div class="w-[800px] min-w-[800px]">
         <div class="flex justify-center">
-          <div class="text-xl">Deso key Generator</div>
+          <div class="text-xl my-2">
+            Deso key Generator
+            <img
+              src="./deso-logo.png"
+              height="150"
+              width="150"
+              class="mx-auto"
+            />
+          </div>
         </div>
         <div class="flex justify-center">
-          <div class="">
+          <div class="mb-2">
             Implementation of
             <a
+              class="underline text-blue-500 hover:text-purple-500"
               href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki"
-              >Bitcoin BIP39</a
+              >BIP39</a
             >
             which allows for deterministic keys to be generated from easy to
             remember mnemonics.
           </div>
         </div>
-        <div class="flex w-[500px] max-w-[500px] mx-auto">
+        <div class="flex w-[800px] max-w-[800px] mx-auto mb-2">
           <div>
-            <div>
-              <input
-                class="h-[11px]"
-                id="generate-random"
-                type="checkbox"
-              /><label class="ml-1 text-[16px]">Pick mnemonic </label>
-            </div>
-            <!-- <div>
-              <input
-                class="h-[11px]"
-                id="use-passphrase"
-                type="checkbox"
-              /><label class="ml-1">use passphrase</label>
-            </div> -->
+            <input
+              class="h-[11px]"
+              id="generate-random"
+              type="checkbox"
+            /><label class="ml-1 text-[16px]">Pick mnemonic </label>
           </div>
         </div>
-        <div class="flex justify-center mt-4">
+        <div class="flex justify-center">
           <button
             id="submit"
             class="bg-blue-700 py-2 px-6 border-stone-500 border-1 text-white rounded-lg"
@@ -56,15 +57,16 @@
             generate mnemonic
           </button>
         </div>
-        <div class="flex justify-center mt-4">
+        <div class="flex justify-center mt-2">
           <textarea
             id="mnemonic-input"
-            class="border-2 border-black min-w-[500px] min-h-[200px] text-black"
+            class="border-2 border-stone-500 min-w-[800px] min-h-[200px] border-1 bg-white"
             width="500"
+            disabled
           ></textarea>
         </div>
 
-        <div class="flex justify-center mt-4">
+        <div class="flex justify-center mt-2">
           <div id="generated-mnemonic"></div>
         </div>
         <div class="flex justify-center">
@@ -75,16 +77,32 @@
           >
         </div>
         <div
-          class="flex flex-col justify-center mt-4 hidden"
+          class="flex flex-col justify-center hidden"
           id="words-to-choose-from"
         >
-          <div class="text-center">
-            choose 12 words <span id="word-count">(0/12)</span
-            ><span id="validate-mnemonic"></span>
+          <div class="flex justify-around my-2">
+            <div class="flex justify-content">
+              <div
+                class="bg-blue-500 h-[10px] w-[10px] mt-auto mb-[5px] mr-[5px]"
+              ></div>
+              <div class="mt-auto text-bottom">selected words</div>
+            </div>
+            <div class="text-center">
+              <div class="text-center">
+                choose 12 words <span id="word-count">(0/12)</span>
+              </div>
+              <span id="validate-mnemonic"></span>
+            </div>
+            <div class="flex justify-content">
+              <div
+                class="bg-green-500 h-[10px] w-[10px] mt-auto mb-[5px] mr-[5px]"
+              ></div>
+              <div class="mt-auto text-bottom">viable last words</div>
+            </div>
           </div>
           <div
             id="words"
-            class="flex justify-center border border-stone-500 p-2 flex-wrap max-w-[500px] mx-auto max-h-[500px] overflow-auto"
+            class="flex justify-center border border-stone-500 p-2 flex-wrap max-w-[800px] mx-auto max-h-[500px] overflow-auto bg-white"
           ></div>
         </div>
       </div>
@@ -114,8 +132,9 @@
         ui.mnemonicInput.value = mnemonic;
         ui.copyButton.classList.remove("hidden");
       });
+
       ui.pickRandom.addEventListener("click", () => {
-        ui.mnemonicInput.value = "";
+        resetState();
         if (ui.pickRandom.checked) {
           ui.wordsToChooseFrom.classList.remove("hidden");
           ui.submitButton.disabled = true;
@@ -128,6 +147,7 @@
         }
       });
     </script>
+
     <script>
       let selected = [];
       const clicked = {};
@@ -152,11 +172,13 @@
           // only allow selecting 12
           if (
             (selected.length >= 12 && clicked[word] == "unselected") ||
-            clicked[word] === "checkSum"
+            (selected.length >= 12 && clicked[word] == "checkSum")
           ) {
             alert("12 words already selected");
             return;
           }
+
+          // validate the word they selected is acceptable
           if (selected.length === 11 && clicked[word] !== "selected") {
             const validLastWords = await getLastValidWords(
               selected,
@@ -170,54 +192,94 @@
           // clicking state update
           if (clicked[word] == "unselected" || clicked[word] === "checkSum") {
             clicked[word] = "selected";
+            selectButton(wordDiv);
           } else {
             clicked[word] = "unselected";
+            unselectButton(wordDiv);
           }
-          if (clicked[word] == "selected") {
-            wordDiv.classList.add(["text-white"]);
 
-            wordDiv.classList.remove(["text-black"]);
-            wordDiv.classList.remove(["bg-green-500"]);
-            wordDiv.classList.add(["bg-blue-500"]);
-            selected.push(word);
-          } else {
-            wordDiv.classList.add(["text-black"]);
-            wordDiv.classList.remove(["bg-blue-500"]);
-            wordDiv.classList.remove(["text-white"]);
-            selected = selected.filter((w) => w !== word);
-          }
+          // if they unselect the 11th word we need to clear out the green words
+          englishWordList
+            .filter((w) => clicked[w] === "checkSum")
+            .forEach(unsetButtonCheckSum);
+
           if (selected.length === 11) {
-            const validLastWords = await getLastValidWords(
-              selected,
-              englishWordList
-            );
-            console.log(validLastWords);
-            validLastWords.forEach((w) => {
-              const element = document.getElementById(w);
-              element.classList.add("bg-green-500");
-            });
-          }
-          if (selected.length === 12) {
+            setPossibleLastWordSelection();
+          } else if (selected.length === 12) {
             const isValid = await validateMnemonic(
               selected.join(" "),
               englishWordList
             );
-            if (isValid) {
-              ui.validateMnemonic.innerText = " mnemonic is valid";
-              ui.validateMnemonic.classList.add("text-green-500");
-              ui.validateMnemonic.classList.remove("text-red-500");
-              ui.copyButton.classList.remove("hidden");
-            } else {
-              ui.validateMnemonic.innerText = " mnemonic is invalid";
-              ui.validateMnemonic.classList.add("text-red-500");
-              ui.validateMnemonic.classList.remove("text-green-500");
-              ui.copyButton.classList.add("hidden");
-            }
+            isValid ? setValid() : setInvalid();
           }
           ui.wordCount.innerText = `(${selected.length}/12)`;
           ui.mnemonicInput.value = selected.join(" ");
         };
       });
+    </script>
+    <!-- UI helpers here -->
+    <script>
+      const setInvalid = () => {
+        ui.validateMnemonic.innerText = " mnemonic is invalid";
+        ui.validateMnemonic.classList.add("text-red-500");
+        ui.validateMnemonic.classList.remove("text-green-500");
+        ui.copyButton.classList.add("hidden");
+      };
+      const setValid = () => {
+        ui.validateMnemonic.innerText = " mnemonic is valid";
+        ui.validateMnemonic.classList.add("text-green-500");
+        ui.validateMnemonic.classList.remove("text-red-500");
+        ui.copyButton.classList.remove("hidden");
+      };
+      const setPossibleLastWordSelection = async () => {
+        // unselect any previously selected words
+        const validLastWords = await getLastValidWords(
+          selected,
+          englishWordList
+        );
+        englishWordList
+          .filter((w) => clicked[w] === "checkSum")
+          .forEach((w) => {
+            unsetButtonCheckSum(w);
+          });
+        // select the new correct ones
+        validLastWords.forEach((w) => {
+          setButtonCheckSum(w);
+        });
+      };
+      const selectButton = (wordDiv) => {
+        wordDiv.classList.add(["text-white"]);
+        wordDiv.classList.remove(["text-black"]);
+        wordDiv.classList.remove(["bg-green-500"]);
+        wordDiv.classList.add(["bg-blue-500"]);
+        selected.push(wordDiv.innerText);
+      };
+      const unselectButton = (wordDiv) => {
+        wordDiv.classList.add(["text-black"]);
+        wordDiv.classList.remove(["bg-blue-500"]);
+        wordDiv.classList.remove(["bg-green-500"]);
+        wordDiv.classList.remove(["text-white"]);
+        ui.copyButton.classList.add("hidden");
+        selected = selected.filter((w) => w !== wordDiv.innerText);
+        ui.validateMnemonic.innerText = "";
+      };
+      const unsetButtonCheckSum = (word) => {
+        clicked[word] = "unselected";
+        const element = document.getElementById(word);
+        unselectButton(element);
+      };
+      const setButtonCheckSum = (word) => {
+        const element = document.getElementById(word);
+        element.classList.add("bg-green-500");
+        clicked[word] = "checkSum";
+      };
+      const resetState = () => {
+        ui.copyButton.classList.add("hidden");
+        ui.mnemonicInput.value = "";
+        englishWordList
+          .filter((w) => clicked[w] !== "unselected")
+          .forEach((w) => unselectButton(document.getElementById(w)));
+      };
     </script>
     <!-- crypto logic here -->
     <script>
@@ -293,9 +355,6 @@
           .join("");
       }
 
-      // Normalization replaces equivalent sequences of characters
-      // so that any two texts that are equivalent will be reduced
-      // to the same sequence of code points, called the normal form of the original text.
       function nfkd(str) {
         if (typeof str !== "string")
           throw new TypeError(`Invalid mnemonic type: ${typeof str}`);
@@ -318,14 +377,6 @@
         );
       }
 
-      /**
-       * Generate mnemonic. Uses Cryptographically-Secure Random Number Generator.
-       * @param wordlist imported wordlist for specific language
-       * @param strength mnemonic strength 128-256 bits
-       * @example
-       * generateMnemonic(wordlist, 128)
-       * // 'bunker expand insane mean adapt throw focus business network among cruel tomato'
-       */
       async function generateMnemonic(wordlist, strength) {
         assert(
           Number.isSafeInteger(strength) &&
@@ -344,20 +395,6 @@
         return bytesToBinary(hash).slice(0, CS);
       }
 
-      /**
-       * Converts mnemonic string to raw entropy in form of byte array.
-       * @param mnemonic 12-24 words
-       * @param wordlist imported wordlist for specific language
-       * @return entropy
-       * @example
-       * const mnem = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
-       * await mnemonicToEntropy(mnem, wordlist)
-       * // Produces
-       * new Uint8Array([
-       *   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
-       *   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f
-       * ])
-       */
       async function mnemonicToEntropy(mnemonic, wordlist) {
         const { words } = normalize(mnemonic);
         assert(words.length % 3 === 0, "Invalid mnemonic");
@@ -384,26 +421,10 @@
         return entropy;
       }
 
-      /**
-       * Converts raw entropy in form of byte array to mnemonic string.
-       * @param entropy byte array
-       * @param wordlist imported wordlist for specific language
-       * @returns 12-24 words
-       * @example
-       * const ent = new Uint8Array([
-       *   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
-       *   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f
-       * ]);
-       * await entropyToMnemonic(ent, wordlist);
-       * // 'legal winner thank year wave sausage worth useful legal winner thank yellow'
-       */
       async function entropyToMnemonic(entropy, wordlist) {
         assertEntropy(entropy);
         const entropyBits = bytesToBinary(entropy);
-        console.log("entropy =>", entropy); // uint8 array
-        console.log("entropyBits =>", entropyBits); // binary string
         const checksumBits = await deriveChecksumBits(entropy);
-        console.log("checksumBits =>", checksumBits); // binary string
         const bits = entropyBits + checksumBits;
         const chunks = bits.match(/(.{1,11})/g);
         const words = chunks.map((binary) => {
@@ -413,9 +434,6 @@
         return words.join(" ");
       }
 
-      /**
-       * Validates mnemonic for being 12-24 words contained in `wordlist`.
-       */
       async function validateMnemonic(mnemonic, wordlist) {
         try {
           await mnemonicToEntropy(mnemonic, wordlist);
@@ -427,16 +445,6 @@
 
       const salt = (passphrase) => nfkd(`mnemonic${passphrase}`);
 
-      /**
-       * Uses KDF to derive 64 bytes of key data from mnemonic + optional password.
-       * @param mnemonic 12-24 words
-       * @param passphrase string that will additionally protect the key
-       * @returns 64 bytes of key data
-       * @example
-       * const mnem = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
-       * await mnemonicToSeed(mnem, 'password');
-       * // new Uint8Array([...64 bytes])
-       */
       async function mnemonicToSeed(mnemonic, passphrase = "") {
         return pbkdf2(
           "SHA-512",
@@ -446,6 +454,7 @@
           64
         );
       }
+
       async function getLastValidWords(mnemonicWithoutFinalWord, wordlist) {
         let possibleLastWords = await Promise.all(
           englishWordList.map(async (lastWord) => {
@@ -457,7 +466,6 @@
                 wordlist
               ); // convert it to entropy, if non error response means its correct
               return lastWord;
-              console.log(`last word ${lastWord} =>`, results);
             } catch {
               return;
             }
@@ -465,50 +473,7 @@
         );
         return (possibleLastWords = possibleLastWords.filter((r) => r));
       }
-      // async function testValidation(mnemonic, wordlist) {
-      //   const INVALID_ENTROPY = "invalid entropy";
-      //   wordlist = wordlist;
-      //   if (!wordlist) {
-      //     throw new Error("no word list");
-      //   }
 
-      //   const words = mnemonic.join(" ").normalize("NFKD").split(" ");
-      //   if (words.length % 3 !== 0) {
-      //     throw new Error("invalid mnemonic");
-      //   }
-      //   // convert word indices to 11 bit binary strings
-      //   const bits = words
-      //     .map((word) => {
-      //       const index = wordlist.indexOf(word);
-      //       if (index === -1) {
-      //         throw new Error("invalid mnemonic");
-      //       }
-      //       return lpad(index.toString(2), "0", 11);
-      //     })
-      //     .join("");
-      //   // split the binary string into ENT/CS
-      //   const dividerIndex = Math.floor(bits.length / 33) * 32;
-      //   const entropyBits = bits.slice(0, dividerIndex);
-      //   const checksumBits = bits.slice(dividerIndex);
-      //   // calculate the checksum and compare
-      //   const entropyBytes = entropyBits.match(/(.{1,8})/g).map(binaryToByte);
-      //   if (entropyBytes.length < 16) {
-      //     throw new Error(INVALID_ENTROPY);
-      //   }
-      //   if (entropyBytes.length > 32) {
-      //     throw new Error(INVALID_ENTROPY);
-      //   }
-      //   if (entropyBytes.length % 4 !== 0) {
-      //     throw new Error(INVALID_ENTROPY);
-      //   }
-      //   const entropy = bytesToBinary(entropyBytes);
-      //   const newChecksum = await deriveChecksumBits(entropy);
-      //   console.log(newChecksum);
-      //   if (newChecksum !== checksumBits) {
-      //     throw new Error("invalid checksum");
-      //   }
-      //   return entropy.toString("hex");
-      // }
       function lpad(str, padString, length) {
         while (str.length < length) {
           str = padString + str;
